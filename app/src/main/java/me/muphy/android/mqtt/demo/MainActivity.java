@@ -1,9 +1,10 @@
 package me.muphy.android.mqtt.demo;
 
 import android.annotation.SuppressLint;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
+
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -21,24 +22,10 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static String TAG = MainActivity.class.getSimpleName();
+    private static final String TAG = MainActivity.class.getSimpleName();
+    @SuppressLint("StaticFieldLeak")
     private static MqttAndroidClient mqttAndroidClient;
-    /*
 
-    private Button bBtn;
-
-    private EditText pubText;
-
-    private EditText pubContent;
-    private EditText pubTopic;
-    private EditText subTopic;
-
-    private TextView pubMsg;
-    private TextView subMsg;
-
-    private EditText passwordEt;
-    private EditText usernameEt;
-    private EditText hostEt;*/
     private TextView subText;
     private TextView status;
     private TextView timeText;
@@ -48,18 +35,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        /*
-        pubBtn = findViewById(R.id.pubBtn);
 
-
-        pubText = findViewById(R.id.pubText);
-        pubContent = findViewById(R.id.pubContent);
-        subText = findViewById(R.id.subText);
-        pubTopic = findViewById(R.id.pubTopic);
-
-
-        pubMsg = findViewById(R.id.pubMsg);
-        subMsg = findViewById(R.id.subMsg);*/
         status = findViewById(R.id.status);
         clientIdEt = findViewById(R.id.clientId);
         connBtn = findViewById(R.id.connBtn);
@@ -68,16 +44,27 @@ public class MainActivity extends AppCompatActivity {
 
         connect();
 
-        connBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String topic = clientIdEt.getText().toString();
+        connBtn.setOnClickListener(v -> {
+            String topic = clientIdEt.getText().toString();
+            if (clientIdEt.isEnabled()) {
                 if (topic.isEmpty()) {
                     topic = "test";
+                    clientIdEt.setText(topic);
                 }
+                clientIdEt.setEnabled(false);
+                clientIdEt.setTextColor(Color.rgb(128,128, 128));
+                connBtn.setText("关机");
                 subscribeTopic(topic);
-
+            } else {
+                clientIdEt.setEnabled(true);
+                clientIdEt.setTextColor(Color.rgb(0,0, 0));
+                connBtn.setText("开机");
+                unsubscribeTopic(topic);
             }
+
+
+
+
         });
 
 
@@ -157,10 +144,7 @@ public class MainActivity extends AppCompatActivity {
                     status.setText("未绑定" );
                     subText.setText("目前状态：lock");
                     timeText.setText("未确认");
-//                    subscribeTopic("test");
-//                    subscribeTopic("/device_online_status");
-//                    subscribeTopic("/read-property");
-//                    subscribeTopic("/report-property");
+
                 }
 
                 @Override
@@ -205,6 +189,15 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public void unsubscribeTopic(String topic) {
+        try {
+            mqttAndroidClient.unsubscribe(topic);
+
+        } catch (MqttException e) {
+            Log.i(TAG, "退订失败>topic:" + topic);
+        }
+    }
+
     @Override
     public void onDestroy() {
         if (mqttAndroidClient != null) {
@@ -219,8 +212,8 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("SetTextI18n")
     public void statusChange(String msg){
         char bind=msg.charAt(0);
-        String lockText="";
-        String time_Text="未设置，";
+        String lockText;
+        String time_Text;
         if(bind=='0')
         {
             status.setText("绑定至"+msg.substring(1));
