@@ -1,13 +1,18 @@
 package me.muphy.android.mqtt.demo;
 
 import android.annotation.SuppressLint;
+
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -19,6 +24,8 @@ import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+
+import me.muphy.android.mqtt.demo.MySQL.dao.LockDao;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -142,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
                 public void onSuccess(IMqttToken asyncActionToken) {
                     Log.i(TAG, "连接成功：" + host);
                     status.setText("未绑定" );
-                    subText.setText("目前状态：lock");
+                    subText.setText("lock");
                     timeText.setText("未确认");
 
                 }
@@ -211,16 +218,32 @@ public class MainActivity extends AppCompatActivity {
     }
     @SuppressLint("SetTextI18n")
     public void statusChange(String msg){
+        LockDao lockDao = new LockDao();
         char bind=msg.charAt(0);
         String lockText;
         String time_Text;
         if(bind=='0')
         {
+            new Thread(() -> {
+
+                clientIdEt.findViewById(R.id.clientId);
+                boolean aa = lockDao.login(Integer.parseInt(clientIdEt.getText().toString()),msg.substring(1),judgestate(subText.getText().toString()));
+                if(aa){
+                    hand1.sendEmptyMessage(1);
+                }else {
+                    hand1.sendEmptyMessage(0);
+                }
+            }).start();
             status.setText("绑定至"+msg.substring(1));
-        }
-        else if(bind=='1')
+        }else if(bind=='1')
         {
-            lockText="目前状态："+msg.substring(1);
+            lockText=msg.substring(1);
+            new Thread(() -> {
+
+                clientIdEt.findViewById(R.id.clientId);
+                lockDao.update(Integer.parseInt(clientIdEt.getText().toString()),judgestate(lockText));
+            }).start();
+
             subText.setText(lockText);
         }
         else
@@ -232,5 +255,31 @@ public class MainActivity extends AppCompatActivity {
 
 
     }
+    public int judgestate(String l){
+        if(l.equals("lock"))
+        {
+            return 1;
+        }else {
+            return 0;
+        }
+    }
+    @SuppressLint("HandlerLeak")
+    final Handler hand1 = new Handler(Looper.getMainLooper())
+    {
+        @Override
+        public void handleMessage(Message msg) {
+
+            if(msg.what == 1)
+            {
+                Toast.makeText(getApplicationContext(),"绑定成功",Toast.LENGTH_LONG).show();
+
+            }
+            else if(msg.what == 0)
+            {
+                Toast.makeText(getApplicationContext(),"绑定失败",Toast.LENGTH_LONG).show();
+            }
+
+        }
+    };
 
 }
