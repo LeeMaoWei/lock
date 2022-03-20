@@ -1,27 +1,38 @@
 package me.muphy.android.mqtt.demo.MySQL.enity;
 
 public class Lock {
-    private int id;
+    private int lockid;
     private String username;
-    private int state;
+    private int lockstate;
+    private String lockname;
 
 
     public Lock() {
 
     }
 
-    public Lock(int id, String username, int state) {
-        this.id = id;
+    public Lock(int id, String username, int state,String lockname) {
+        this.lockid = id;
         this.username = username;
-        this.state=state;
+        this.lockstate=state;
+        this.lockname=lockname;
     }
+
+    public String getLockname() {
+        return lockname;
+    }
+
+    public void setLockname(String lockname) {
+        this.lockname = lockname;
+    }
+
 
     public int getId() {
-        return id;
+        return lockid;
     }
 
-    public void setId(int id) {
-        this.id = id;
+    public void setId(int lockid) {
+        this.lockid = lockid;
     }
 
 
@@ -33,9 +44,9 @@ public class Lock {
         this.username = username;
     }
 
-    public int getState(){return  state;}
+    public int getState(){return  lockstate;}
 
-    public void setState(int state) {
-        this.state = state;
+    public void setState(int lockstate) {
+        this.lockstate = lockstate;
     }
 }

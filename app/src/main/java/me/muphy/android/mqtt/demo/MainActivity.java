@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.StrictMode;
 import android.util.Log;
 
 import android.widget.Button;
@@ -25,9 +26,13 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
+import java.sql.SQLException;
+
 import me.muphy.android.mqtt.demo.MySQL.dao.LockDao;
+import me.muphy.android.mqtt.demo.MySQL.enity.Lock;
 
 public class MainActivity extends AppCompatActivity {
+
 
     private static final String TAG = MainActivity.class.getSimpleName();
     @SuppressLint("StaticFieldLeak")
@@ -35,24 +40,37 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView subText;
     private TextView status;
-    private TextView timeText;
     private EditText clientIdEt;
     private Button connBtn;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
+
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
         setContentView(R.layout.activity_main);
 
         status = findViewById(R.id.status);
         clientIdEt = findViewById(R.id.clientId);
         connBtn = findViewById(R.id.connBtn);
         subText = findViewById(R.id.subText);
-        timeText = findViewById(R.id.timeText);
+        //timeText = findViewById(R.id.timeText);
 
         connect();
 
         connBtn.setOnClickListener(v -> {
             String topic = clientIdEt.getText().toString();
+            Lock lock = new Lock();
+            LockDao lockDao = new LockDao();
+            try {
+                lock=lockDao.getinfo(topic);
+            } catch (
+                    SQLException throwables) {
+                throwables.printStackTrace();
+            }
+            status.setText(lock.getUsername());
+            subText.setText(judgestate(String.valueOf(lock.getState())));
             if (clientIdEt.isEnabled()) {
                 if (topic.isEmpty()) {
                     topic = "test";
@@ -148,9 +166,9 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
                     Log.i(TAG, "连接成功：" + host);
+
                     status.setText("未绑定" );
                     subText.setText("lock");
-                    timeText.setText("未确认");
 
                 }
 
@@ -221,13 +239,13 @@ public class MainActivity extends AppCompatActivity {
         LockDao lockDao = new LockDao();
         char bind=msg.charAt(0);
         String lockText;
-        String time_Text;
+   //     String time_Text;
         if(bind=='0')
         {
             new Thread(() -> {
 
                 clientIdEt.findViewById(R.id.clientId);
-                boolean aa = lockDao.login(Integer.parseInt(clientIdEt.getText().toString()),msg.substring(1),judgestate(subText.getText().toString()));
+                boolean aa = lockDao.login(Integer.parseInt(clientIdEt.getText().toString()),msg.substring(1), Integer.parseInt(judgestate(subText.getText().toString())));
                 if(aa){
                     hand1.sendEmptyMessage(1);
                 }else {
@@ -239,30 +257,30 @@ public class MainActivity extends AppCompatActivity {
         {
             lockText=msg.substring(1);
             new Thread(() -> {
-
                 clientIdEt.findViewById(R.id.clientId);
-                lockDao.update(Integer.parseInt(clientIdEt.getText().toString()),judgestate(lockText));
+                lockDao.update(Integer.parseInt(clientIdEt.getText().toString()), Integer.parseInt(judgestate(lockText)));
             }).start();
 
             subText.setText(lockText);
         }
-        else
-        {
-            time_Text="从"+msg.substring(1,3)+":"+msg.substring(3,5)+"解锁到"+msg.substring(5,7)+":"+msg.substring(7)+"锁住";
-            timeText.setText(time_Text);
-        }
+
 
 
 
     }
-    public int judgestate(String l){
+    public String judgestate(String l){
         if(l.equals("lock"))
         {
-            return 1;
+            return "1";
+        }else if (l.equals("unlock")){
+            return "0";
+        }else if (l.equals("0")){
+            return "lock";
         }else {
-            return 0;
+            return "unlock";
         }
     }
+
     @SuppressLint("HandlerLeak")
     final Handler hand1 = new Handler(Looper.getMainLooper())
     {
